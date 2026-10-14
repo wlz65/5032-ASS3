@@ -1,0 +1,219 @@
+@import './base.css';
+
+:root {
+  --brand-950: #073b35;
+  --brand-800: #0b5d53;
+  --brand-650: #0f766e;
+  --brand-100: #dff5ef;
+  --brand-50: #f2fbf8;
+  --ink-950: #13201d;
+  --ink-700: #38504a;
+  --ink-500: #60736f;
+  --line: #d8e4e0;
+  --surface: #ffffff;
+  --surface-soft: #f6f9f8;
+  --danger: #b42318;
+  --danger-soft: #fff1f0;
+  --success: #16794b;
+  --success-soft: #eaf8f0;
+  --info: #245ea8;
+  --info-soft: #edf5ff;
+  --shadow: 0 18px 48px rgba(12, 65, 57, 0.09);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--surface-soft);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--ink-950);
+  background:
+    radial-gradient(circle at top right, rgba(172, 232, 210, 0.3), transparent 30rem),
+    var(--surface-soft);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.55;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+a,
+input,
+textarea {
+  outline-offset: 3px;
+}
+
+:focus-visible {
+  outline: 3px solid #f2b84b;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-shell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2.5rem 0 4rem;
+  flex: 1;
+}
+
+.page-heading {
+  max-width: 760px;
+  margin-bottom: 2rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--brand-650);
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0.75rem;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+}
+
+h2 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  letter-spacing: -0.025em;
+}
+
+.lede {
+  color: var(--ink-700);
+  font-size: 1.08rem;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.primary-button,
+.secondary-button,
+.text-button {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  padding: 0.65rem 1rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.primary-button {
+  color: #fff;
+  background: var(--brand-650);
+  box-shadow: 0 8px 20px rgba(15, 118, 110, 0.2);
+}
+
+.secondary-button {
+  color: var(--brand-800);
+  background: #fff;
+  border-color: #b9d8d1;
+}
+
+.text-button {
+  color: var(--brand-800);
+  background: transparent;
+}
+
+.primary-button:hover:not(:disabled),
+.secondary-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field label,
+.field-label {
+  color: var(--ink-700);
+  font-weight: 750;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  border: 1px solid #b9cbc6;
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+  color: var(--ink-950);
+  background: #fff;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: var(--brand-650);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+}
+
+.field-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.site-footer {
+  padding: 1.5rem 1rem;
+  color: var(--ink-500);
+  text-align: center;
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+@media (max-width: 680px) {
+  .page-shell {
+    width: min(100% - 1rem, 1180px);
+    padding-top: 1.5rem;
+  }
+
+  .card {
+    border-radius: 15px;
+  }
+}

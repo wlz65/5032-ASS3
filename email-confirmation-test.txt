@@ -1,0 +1,4 @@
+MClimateWise Mel - D2 Email Confirmation Test
+
+This attachment confirms that the web application can send an email with an attachment.
+Test date: 14 October 2026
