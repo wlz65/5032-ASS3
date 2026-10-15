@@ -28,6 +28,7 @@ function createFilters() {
 const filters = ref(createFilters())
 const dataTable = ref(null)
 const filteredRowCount = ref(props.rows.length)
+const exportMessage = ref('')
 const resolvedExportFilename = computed(
   () => props.exportFilename || props.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
 )
@@ -35,15 +36,18 @@ const resolvedExportFilename = computed(
 function clearFilters() {
   filters.value = createFilters()
   filteredRowCount.value = props.rows.length
+  exportMessage.value = ''
 }
 
 function handleFilter(event) {
   filteredRowCount.value = event.filteredValue.length
+  exportMessage.value = ''
 }
 
 function exportTable() {
   if (!filteredRowCount.value) return
   dataTable.value?.exportCSV()
+  exportMessage.value = `${filteredRowCount.value} ${filteredRowCount.value === 1 ? 'row' : 'rows'} exported from ${props.title}.`
 }
 </script>
 
@@ -129,6 +133,7 @@ function exportTable() {
         </template>
       </Column>
     </DataTable>
+    <p class="export-status" aria-live="polite" aria-atomic="true">{{ exportMessage }}</p>
   </section>
 </template>
 
@@ -207,6 +212,14 @@ function exportTable() {
 .empty-state i {
   margin-bottom: 0.35rem;
   font-size: 1.5rem;
+}
+
+.export-status {
+  min-height: 1.4rem;
+  margin: 0.7rem 0 0;
+  color: var(--success);
+  font-size: 0.9rem;
+  font-weight: 650;
 }
 
 .sr-only {

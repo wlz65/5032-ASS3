@@ -5,6 +5,7 @@ import HomeView from '@/views/HomeView.vue'
 const LoginView = () => import('@/views/LoginView.vue')
 const TablesView = () => import('@/views/TablesView.vue')
 const EmailView = () => import('@/views/EmailView.vue')
+const MapView = () => import('@/views/MapView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
 
 const router = createRouter({
@@ -14,6 +15,7 @@ const router = createRouter({
     { path: '/', name: 'home', component: HomeView },
     { path: '/login', name: 'login', component: LoginView },
     { path: '/tables', name: 'tables', component: TablesView, meta: { requiresAuth: true } },
+    { path: '/map', name: 'map', component: MapView, meta: { requiresAuth: true } },
     { path: '/email', name: 'email', component: EmailView, meta: { requiresAuth: true } },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
   ],

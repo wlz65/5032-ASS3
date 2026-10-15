@@ -9,6 +9,9 @@ const { user, loading, logout } = useAuth()
 const userLabel = computed(() => user.value?.email ?? '')
 
 async function handleLogout() {
+  const confirmed = window.confirm('Are you sure you want to sign out?')
+  if (!confirmed) return
+
   await logout()
   await router.push('/')
 }
@@ -29,13 +32,19 @@ async function handleLogout() {
       <div class="nav-links">
         <RouterLink to="/">Home</RouterLink>
         <RouterLink v-if="user" to="/tables">Explore data</RouterLink>
+        <RouterLink v-if="user" to="/map">Map &amp; route</RouterLink>
         <RouterLink v-if="user" to="/email">Send email</RouterLink>
       </div>
 
       <div class="account-area">
         <template v-if="user">
           <span class="user-email" :title="userLabel">{{ userLabel }}</span>
-          <button class="secondary-button compact" type="button" :disabled="loading" @click="handleLogout">
+          <button
+            class="secondary-button compact"
+            type="button"
+            :disabled="loading"
+            @click="handleLogout"
+          >
             Sign out
           </button>
         </template>

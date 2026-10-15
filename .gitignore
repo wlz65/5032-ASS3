@@ -42,3 +42,8 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Local browser QA and temporary deployment bundle
+.chrome-qa*/
+.edge-qa/
+firebase-hosting*.zip
