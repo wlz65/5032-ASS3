@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
-const { user, loading, logout } = useAuth()
+const { user, isAdmin, loading, logout } = useAuth()
 
 const userLabel = computed(() => user.value?.email ?? '')
 
@@ -21,7 +21,11 @@ async function handleLogout() {
   <header class="site-header">
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <nav class="nav-shell" aria-label="Primary navigation">
-      <RouterLink class="brand" to="/" aria-label="MClimateWise Mel home">
+      <RouterLink
+        class="brand"
+        :to="isAdmin ? '/admin' : '/'"
+        :aria-label="isAdmin ? 'MClimateWise Mel admin' : 'MClimateWise Mel home'"
+      >
         <span class="brand-mark" aria-hidden="true"><i class="pi pi-sun"></i></span>
         <span>
           <strong>MClimateWise</strong>
@@ -30,10 +34,13 @@ async function handleLogout() {
       </RouterLink>
 
       <div class="nav-links">
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink v-if="user" to="/tables">Explore data</RouterLink>
-        <RouterLink v-if="user" to="/map">Map &amp; route</RouterLink>
-        <RouterLink v-if="user" to="/email">Send email</RouterLink>
+        <RouterLink v-if="user && isAdmin" to="/admin">Admin</RouterLink>
+        <template v-else>
+          <RouterLink to="/">Home</RouterLink>
+          <RouterLink v-if="user" to="/tables">Explore data</RouterLink>
+          <RouterLink v-if="user" to="/map">Map &amp; route</RouterLink>
+          <RouterLink v-if="user" to="/quiz">Climate quiz</RouterLink>
+        </template>
       </div>
 
       <div class="account-area">

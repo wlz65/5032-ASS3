@@ -4,6 +4,7 @@ import { auth, firebaseSetupMessage } from '@/services/firebase'
 import { registerWithEmail, signInWithEmail, signOutUser } from '@/services/authService'
 
 const user = shallowRef(null)
+const isAdmin = ref(false)
 const loading = ref(true)
 const error = ref('')
 
@@ -15,13 +16,25 @@ const readyPromise = new Promise((resolve) => {
 if (auth) {
   onAuthStateChanged(
     auth,
-    (nextUser) => {
+    async (nextUser) => {
       user.value = nextUser
-      loading.value = false
-      resolveReady(nextUser)
+      isAdmin.value = false
+
+      try {
+        if (nextUser) {
+          const tokenResult = await nextUser.getIdTokenResult()
+          isAdmin.value = tokenResult.claims.admin === true
+        }
+      } catch {
+        error.value = 'We could not confirm your account permissions. Please sign in again.'
+      } finally {
+        loading.value = false
+        resolveReady(nextUser)
+      }
     },
     () => {
       error.value = 'We could not confirm your sign-in status. Please refresh and try again.'
+      isAdmin.value = false
       loading.value = false
       resolveReady(null)
     },
@@ -61,6 +74,7 @@ async function runAuthAction(action) {
 export function useAuth() {
   return {
     user: readonly(user),
+    isAdmin: readonly(isAdmin),
     loading: readonly(loading),
     error: readonly(error),
     configured: Boolean(auth),

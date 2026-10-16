@@ -27,6 +27,7 @@ function createFilters() {
 
 const filters = ref(createFilters())
 const dataTable = ref(null)
+const filteredRows = ref([...props.rows])
 const filteredRowCount = ref(props.rows.length)
 const exportMessage = ref('')
 const resolvedExportFilename = computed(
@@ -35,19 +36,85 @@ const resolvedExportFilename = computed(
 
 function clearFilters() {
   filters.value = createFilters()
+  filteredRows.value = [...props.rows]
   filteredRowCount.value = props.rows.length
   exportMessage.value = ''
 }
 
 function handleFilter(event) {
+  filteredRows.value = event.filteredValue
   filteredRowCount.value = event.filteredValue.length
   exportMessage.value = ''
 }
 
-function exportTable() {
+function exportCsv() {
   if (!filteredRowCount.value) return
   dataTable.value?.exportCSV()
-  exportMessage.value = `${filteredRowCount.value} ${filteredRowCount.value === 1 ? 'row' : 'rows'} exported from ${props.title}.`
+  exportMessage.value = `${filteredRowCount.value} ${filteredRowCount.value === 1 ? 'row' : 'rows'} exported to CSV from ${props.title}.`
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
+
+function exportPdf() {
+  if (!filteredRowCount.value) return
+
+  const printWindow = window.open('', '_blank', 'width=1100,height=800')
+  if (!printWindow) {
+    exportMessage.value = 'Allow pop-ups to open the PDF print view.'
+    return
+  }
+
+  printWindow.opener = null
+  const headerCells = props.columns
+    .map((column) => `<th>${escapeHtml(column.header)}</th>`)
+    .join('')
+  const bodyRows = filteredRows.value
+    .map(
+      (row) =>
+        `<tr>${props.columns
+          .map((column) => `<td>${escapeHtml(row[column.field])}</td>`)
+          .join('')}</tr>`,
+    )
+    .join('')
+
+  printWindow.document.write(`<!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <title>${escapeHtml(props.title)}</title>
+        <style>
+          @page { size: A4 landscape; margin: 12mm; }
+          body { margin: 0; color: #17322d; font: 12px Arial, sans-serif; }
+          h1 { margin: 0 0 6px; font-size: 22px; }
+          p { margin: 0 0 16px; color: #526863; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { padding: 8px; border: 1px solid #cad9d5; text-align: left; vertical-align: top; }
+          th { background: #def3ed; }
+          tr:nth-child(even) { background: #f6faf9; }
+          thead { display: table-header-group; }
+          tr { break-inside: avoid; }
+        </style>
+      </head>
+      <body>
+        <h1>${escapeHtml(props.title)}</h1>
+        <p>${filteredRowCount.value} ${filteredRowCount.value === 1 ? 'record' : 'records'} exported from MClimateWise Mel</p>
+        <table>
+          <thead><tr>${headerCells}</tr></thead>
+          <tbody>${bodyRows}</tbody>
+        </table>
+      </body>
+    </html>`)
+  printWindow.document.close()
+  printWindow.focus()
+  printWindow.setTimeout(() => printWindow.print(), 250)
+  exportMessage.value = `PDF print view opened for ${filteredRowCount.value} ${filteredRowCount.value === 1 ? 'row' : 'rows'}. Choose “Save as PDF” in the print window.`
 }
 </script>
 
@@ -89,7 +156,15 @@ function exportTable() {
               label="Export CSV"
               icon="pi pi-download"
               :disabled="filteredRowCount === 0"
-              @click="exportTable"
+              @click="exportCsv"
+            />
+            <Button
+              type="button"
+              label="Export PDF"
+              icon="pi pi-file-pdf"
+              severity="secondary"
+              :disabled="filteredRowCount === 0"
+              @click="exportPdf"
             />
             <Button
               type="button"

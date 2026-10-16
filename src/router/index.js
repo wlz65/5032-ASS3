@@ -4,8 +4,9 @@ import HomeView from '@/views/HomeView.vue'
 
 const LoginView = () => import('@/views/LoginView.vue')
 const TablesView = () => import('@/views/TablesView.vue')
-const EmailView = () => import('@/views/EmailView.vue')
+const AdminView = () => import('@/views/AdminView.vue')
 const MapView = () => import('@/views/MapView.vue')
+const QuizView = () => import('@/views/QuizView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
 
 const router = createRouter({
@@ -16,17 +17,28 @@ const router = createRouter({
     { path: '/login', name: 'login', component: LoginView },
     { path: '/tables', name: 'tables', component: TablesView, meta: { requiresAuth: true } },
     { path: '/map', name: 'map', component: MapView, meta: { requiresAuth: true } },
-    { path: '/email', name: 'email', component: EmailView, meta: { requiresAuth: true } },
+    { path: '/quiz', name: 'quiz', component: QuizView, meta: { requiresAuth: true } },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: AdminView,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    { path: '/email', redirect: '/admin' },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
   ],
 })
 
 router.beforeEach(async (to) => {
-  const { user, waitForAuthReady } = useAuth()
+  const { user, isAdmin, waitForAuthReady } = useAuth()
   await waitForAuthReady()
 
   if (to.meta.requiresAuth && !user.value) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.requiresAdmin && !isAdmin.value) {
+    return { name: 'tables' }
   }
 
   if (to.name === 'login' && user.value) {
