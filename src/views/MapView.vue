@@ -1,39 +1,78 @@
 <script setup>
 import { nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { communityEvents } from '@/data/communityEvents'
 import { fetchRoute, searchMelbournePlaces } from '@/services/mapService'
 
 const LEAFLET_VERSION = '1.9.4'
 const LEAFLET_STYLE_URL = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/leaflet.css`
 const LEAFLET_SCRIPT_URL = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/leaflet.js`
 const MELBOURNE_CENTRE = [-37.8136, 144.9631]
+const mappedEvents = communityEvents.filter(
+  (event) => Number.isFinite(event.latitude) && Number.isFinite(event.longitude),
+)
 
 const DEFAULT_START = {
   name: 'Federation Square, Melbourne',
   latitude: -37.8179,
   longitude: 144.9691,
 }
+const POPULAR_DEPARTURES = [
+  { id: 'federation-square', name: 'Federation Square', latitude: -37.8179, longitude: 144.9691 },
+  {
+    id: 'flinders-street-station',
+    name: 'Flinders Street Station',
+    latitude: -37.8183,
+    longitude: 144.9671,
+  },
+  {
+    id: 'southern-cross-station',
+    name: 'Southern Cross Station',
+    latitude: -37.8183,
+    longitude: 144.9525,
+  },
+  {
+    id: 'melbourne-central',
+    name: 'Melbourne Central',
+    latitude: -37.8102,
+    longitude: 144.9628,
+  },
+  {
+    id: 'state-library-victoria',
+    name: 'State Library Victoria',
+    latitude: -37.8098,
+    longitude: 144.9652,
+  },
+  {
+    id: 'monash-clayton',
+    name: 'Monash University Clayton',
+    latitude: -37.9105,
+    longitude: 145.1362,
+  },
+]
 const DEFAULT_DESTINATION = {
-  name: 'Royal Botanic Gardens Victoria, Melbourne',
-  latitude: -37.8304,
-  longitude: 144.9796,
+  name: mappedEvents[0].name,
+  latitude: mappedEvents[0].latitude,
+  longitude: mappedEvents[0].longitude,
 }
 
 const mapElement = ref(null)
 const query = ref('')
 const results = ref([])
 const selectedPlace = ref(null)
+const selectedEvent = ref(mappedEvents[0])
 const start = ref({ ...DEFAULT_START })
 const destination = ref({ ...DEFAULT_DESTINATION })
 const route = ref(null)
 const searchStatus = ref('idle')
-const searchMessage = ref('Search for a public Melbourne place or point of interest.')
+const searchMessage = ref('Search for your Melbourne departure place.')
 const routeStatus = ref('idle')
-const routeMessage = ref('Two example Melbourne places are ready. Select Plan route to begin.')
+const routeMessage = ref('Choose an event and search for a departure place, then plan your route.')
 const mapStatus = ref('loading')
 
 let leaflet = null
 let map = null
 let placeLayer = null
+let eventLayer = null
 let routeLayer = null
 let leafletPromise = null
 
@@ -76,6 +115,22 @@ function endpointFromPlace(place) {
   }
 }
 
+function endpointFromEvent(event) {
+  return {
+    name: event.name,
+    latitude: event.latitude,
+    longitude: event.longitude,
+  }
+}
+
+function formatEventDate(date) {
+  return new Intl.DateTimeFormat('en-AU', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(`${date}T00:00:00`))
+}
+
 function createMarker(endpoint, label, colour) {
   if (!map || !leaflet) return null
 
@@ -99,6 +154,26 @@ function drawSelectedPlace(place) {
   placeLayer.clearLayers()
   createMarker(place, 'P', '#245ea8')?.addTo(placeLayer).bindPopup(place.name).openPopup()
   map.setView([place.latitude, place.longitude], 15)
+}
+
+function drawEventMarkers() {
+  if (!map || !leaflet || !eventLayer) return
+  eventLayer.clearLayers()
+
+  mappedEvents.forEach((event, index) => {
+    const isSelected = selectedEvent.value.id === event.id
+    const marker = createMarker(
+      event,
+      isSelected ? 'B' : String(index + 1),
+      isSelected ? '#b42318' : '#0b5d53',
+    )
+    marker
+      ?.addTo(eventLayer)
+      .bindPopup(
+        `<strong>${event.name}</strong><br>${event.venue}, ${event.location}<br>${formatEventDate(event.date)}`,
+      )
+      .on('click', () => selectClimateEvent(event, false))
+  })
 }
 
 function drawEndpoints() {
@@ -158,13 +233,22 @@ function useAsStart(place) {
   drawEndpoints()
 }
 
-function useAsDestination(place) {
-  selectPlace(place)
-  destination.value = endpointFromPlace(place)
+function usePopularDeparture(place) {
+  query.value = place.name
+  results.value = []
+  searchStatus.value = 'success'
+  useAsStart({ ...place, type: 'popular departure' })
+}
+
+function selectClimateEvent(event, focusMap = true) {
+  selectedEvent.value = event
+  destination.value = endpointFromEvent(event)
   route.value = null
   routeStatus.value = 'idle'
-  routeMessage.value = `${place.name} is now the destination.`
+  routeMessage.value = `${event.name} is now your event destination.`
+  drawEventMarkers()
   drawEndpoints()
+  if (focusMap) map?.setView([event.latitude, event.longitude], 14)
 }
 
 async function planRoute() {
@@ -186,11 +270,19 @@ async function planRoute() {
 
 function clearRoute() {
   start.value = { ...DEFAULT_START }
+  selectedEvent.value = mappedEvents[0]
+  selectedPlace.value = null
+  query.value = ''
+  results.value = []
+  searchStatus.value = 'idle'
+  searchMessage.value = 'Search for your Melbourne departure place.'
   destination.value = { ...DEFAULT_DESTINATION }
   route.value = null
   routeStatus.value = 'idle'
-  routeMessage.value = 'Route cleared. The two example Melbourne places are ready again.'
+  routeMessage.value = 'Route cleared. The default departure place and first event are ready.'
+  drawEventMarkers()
   drawEndpoints()
+  placeLayer?.clearLayers()
   map?.fitBounds(
     [
       [start.value.latitude, start.value.longitude],
@@ -213,7 +305,9 @@ onMounted(async () => {
       })
       .addTo(map)
     placeLayer = leaflet.layerGroup().addTo(map)
+    eventLayer = leaflet.layerGroup().addTo(map)
     routeLayer = leaflet.layerGroup().addTo(map)
+    drawEventMarkers()
     if (route.value) drawRoute()
     else drawEndpoints()
     mapStatus.value = 'ready'
@@ -229,26 +323,50 @@ onUnmounted(() => {
   map?.remove()
   map = null
   placeLayer = null
+  eventLayer = null
   routeLayer = null
 })
 </script>
 
 <template>
   <div class="page-heading">
-    <p class="eyebrow">Melbourne climate action map</p>
-    <h1>Find a place and plan a trip</h1>
+    <p class="eyebrow">Melbourne climate event map</p>
+    <h1>Choose a climate event and plan your visit</h1>
     <p class="lede">
-      Search public Melbourne places, choose route endpoints, and view driving distance and
-      estimated time.
+      Explore featured community climate activities, choose where you are leaving from, and plan a
+      route to the event.
     </p>
   </div>
 
   <div class="map-layout">
-    <section class="map-tools card" aria-labelledby="place-search-heading">
-      <h2 id="place-search-heading">1. Search for a place</h2>
+    <section class="map-tools card" aria-labelledby="event-choice-heading">
+      <h2 id="event-choice-heading">1. Choose a climate event</h2>
+      <p class="tool-description">Select a featured in-person event to use as your destination.</p>
+
+      <ul class="event-list" aria-label="Featured climate events">
+        <li
+          v-for="event in mappedEvents"
+          :key="event.id"
+          class="event-result"
+          :class="{ 'is-selected': selectedEvent.id === event.id }"
+        >
+          <button
+            class="event-select"
+            type="button"
+            :aria-pressed="selectedEvent.id === event.id"
+            @click="selectClimateEvent(event)"
+          >
+            <strong>{{ event.name }}</strong>
+            <span>{{ event.venue }}, {{ event.location }}</span>
+            <small>{{ formatEventDate(event.date) }} · {{ event.availability }}</small>
+          </button>
+        </li>
+      </ul>
+
+      <h2 id="place-search-heading" class="departure-heading">2. Search your departure place</h2>
       <form class="search-form" role="search" @submit.prevent="handleSearch">
         <div class="field">
-          <label for="place-query">Public place or point of interest</label>
+          <label for="place-query">Melbourne public place or point of interest</label>
           <input
             id="place-query"
             v-model="query"
@@ -256,7 +374,7 @@ onUnmounted(() => {
             minlength="2"
             required
             autocomplete="off"
-            placeholder="For example: Melbourne Museum"
+            placeholder="For example: Federation Square"
           />
           <small>Search happens only when you submit. Do not enter private information.</small>
         </div>
@@ -265,6 +383,25 @@ onUnmounted(() => {
           {{ searchStatus === 'loading' ? 'Searching…' : 'Search places' }}
         </button>
       </form>
+
+      <div class="popular-departures" aria-labelledby="popular-departures-heading">
+        <strong id="popular-departures-heading">Or choose a common starting point</strong>
+        <p>These options work even when place search is temporarily unavailable.</p>
+        <div class="popular-departure-list">
+          <button
+            v-for="place in POPULAR_DEPARTURES"
+            :key="place.id"
+            class="departure-chip"
+            :class="{ 'is-selected': selectedPlace?.id === place.id }"
+            type="button"
+            :aria-pressed="selectedPlace?.id === place.id"
+            @click="usePopularDeparture(place)"
+          >
+            <i class="pi pi-map-marker" aria-hidden="true"></i>
+            {{ place.name }}
+          </button>
+        </div>
+      </div>
 
       <p
         class="status-text"
@@ -283,17 +420,14 @@ onUnmounted(() => {
           </button>
           <div class="endpoint-actions" aria-label="Use this place in the route">
             <button class="secondary-button" type="button" @click="useAsStart(place)">
-              Use as start
-            </button>
-            <button class="secondary-button" type="button" @click="useAsDestination(place)">
-              Use as destination
+              Use as departure
             </button>
           </div>
         </li>
       </ul>
 
       <div v-if="selectedPlace" class="selected-place" aria-live="polite">
-        <strong>Selected place</strong>
+        <strong>Selected departure place</strong>
         <span>{{ selectedPlace.name }}</span>
       </div>
     </section>
@@ -302,7 +436,7 @@ onUnmounted(() => {
       <div class="map-card-heading">
         <div>
           <h2 id="map-heading">Interactive map</h2>
-          <p>Use the + and − controls to zoom. Route details are also provided below as text.</p>
+          <p>Green markers show featured events. The selected destination is marked B.</p>
         </div>
         <span class="map-state">
           {{
@@ -318,7 +452,7 @@ onUnmounted(() => {
         ref="mapElement"
         class="map-canvas"
         role="region"
-        aria-label="Interactive map of Melbourne showing selected places and routes"
+        aria-label="Interactive map of Melbourne showing climate events and the planned route"
       ></div>
     </section>
   </div>
@@ -326,8 +460,8 @@ onUnmounted(() => {
   <section class="route-card card" aria-labelledby="route-heading">
     <div class="route-heading-row">
       <div>
-        <p class="eyebrow">Trip information</p>
-        <h2 id="route-heading">2. Plan a route</h2>
+        <p class="eyebrow">Event travel information</p>
+        <h2 id="route-heading">3. Plan your route</h2>
       </div>
       <div class="route-actions">
         <button
@@ -337,7 +471,7 @@ onUnmounted(() => {
           @click="planRoute"
         >
           <i class="pi pi-directions" aria-hidden="true"></i>
-          {{ routeStatus === 'loading' ? 'Planning…' : 'Plan route' }}
+          {{ routeStatus === 'loading' ? 'Planning…' : 'Plan route to event' }}
         </button>
         <button class="secondary-button" type="button" @click="clearRoute">Clear route</button>
       </div>
@@ -349,16 +483,22 @@ onUnmounted(() => {
         <dd>{{ start.name }}</dd>
       </div>
       <div>
-        <dt>Destination</dt>
-        <dd>{{ destination.name }}</dd>
+        <dt>Climate event</dt>
+        <dd>{{ selectedEvent.name }}</dd>
       </div>
       <div>
-        <dt>Distance</dt>
-        <dd>{{ route ? `${route.distanceKm} km` : 'Plan the route to calculate' }}</dd>
+        <dt>Venue and date</dt>
+        <dd>{{ selectedEvent.venue }}, {{ formatEventDate(selectedEvent.date) }}</dd>
       </div>
       <div>
-        <dt>Estimated driving time</dt>
-        <dd>{{ route ? `${route.durationMinutes} minutes` : 'Plan the route to calculate' }}</dd>
+        <dt>Route estimate</dt>
+        <dd>
+          {{
+            route
+              ? `${route.distanceKm} km · about ${route.durationMinutes} minutes driving`
+              : 'Plan the route to calculate'
+          }}
+        </dd>
       </div>
     </dl>
 
@@ -400,12 +540,108 @@ onUnmounted(() => {
 }
 
 .field small,
-.map-card-heading p {
+.map-card-heading p,
+.tool-description {
   color: var(--ink-500);
+}
+
+.tool-description {
+  margin-bottom: 0.8rem;
+}
+
+.event-list {
+  display: grid;
+  gap: 0.6rem;
+  max-height: 340px;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.event-result {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.event-result.is-selected {
+  border-color: var(--brand-700);
+  background: var(--brand-100);
+  box-shadow: 0 0 0 2px rgba(11, 93, 83, 0.12);
+}
+
+.event-select {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  border: 0;
+  padding: 0.75rem;
+  color: var(--ink-950);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.event-select span,
+.event-select small {
+  color: var(--ink-500);
+}
+
+.departure-heading {
+  margin-top: 1.4rem;
 }
 
 .search-form .primary-button {
   justify-self: start;
+}
+
+.popular-departures {
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.popular-departures > p {
+  margin: 0.2rem 0 0.75rem;
+  color: var(--ink-500);
+  font-size: 0.88rem;
+}
+
+.popular-departure-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.departure-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.4rem 0.7rem;
+  color: var(--ink-700);
+  background: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.departure-chip:hover,
+.departure-chip.is-selected {
+  border-color: var(--brand-700);
+  color: var(--brand-800);
+  background: var(--brand-100);
+}
+
+.departure-chip:focus-visible {
+  outline: 3px solid rgba(36, 94, 168, 0.28);
+  outline-offset: 2px;
 }
 
 .primary-button i {

@@ -1,7 +1,12 @@
 import { readonly, ref, shallowRef } from 'vue'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth, firebaseSetupMessage } from '@/services/firebase'
-import { registerWithEmail, signInWithEmail, signOutUser } from '@/services/authService'
+import {
+  registerWithEmail,
+  signInWithEmail,
+  signInWithGoogle,
+  signOutUser,
+} from '@/services/authService'
 
 const user = shallowRef(null)
 const isAdmin = ref(false)
@@ -49,6 +54,10 @@ const errorMessages = {
   'auth/email-already-in-use': 'An account already exists for this email address.',
   'auth/invalid-credential': 'The email or password is incorrect.',
   'auth/invalid-email': 'Enter a valid email address.',
+  'auth/popup-blocked': 'Allow pop-ups for this site, then try Google sign-in again.',
+  'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
+  'auth/account-exists-with-different-credential':
+    'An account already exists for this email. Sign in with your original method.',
   'auth/too-many-requests': 'Too many attempts. Wait a moment before trying again.',
   'auth/weak-password': 'Use a password with at least six characters.',
 }
@@ -91,6 +100,12 @@ export function useAuth() {
     login: (email, password) =>
       runAuthAction(async () => {
         const credential = await signInWithEmail(email, password)
+        user.value = credential.user
+        return credential
+      }),
+    loginWithGoogle: () =>
+      runAuthAction(async () => {
+        const credential = await signInWithGoogle()
         user.value = credential.user
         return credential
       }),

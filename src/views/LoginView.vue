@@ -6,7 +6,15 @@ import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
 const router = useRouter()
-const { configured, loading, error: authError, register, login, clearError } = useAuth()
+const {
+  configured,
+  loading,
+  error: authError,
+  register,
+  login,
+  loginWithGoogle,
+  clearError,
+} = useAuth()
 
 const mode = ref('login')
 const form = reactive({ email: '', password: '' })
@@ -43,6 +51,20 @@ async function submit() {
       await login(form.email.trim(), form.password)
     }
 
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/tables'
+    await router.replace(redirect)
+  } catch {
+    // The shared auth composable exposes a safe user-facing message.
+  }
+}
+
+async function continueWithGoogle() {
+  successMessage.value = ''
+  clearError()
+  if (!configured) return
+
+  try {
+    await loginWithGoogle()
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/tables'
     await router.replace(redirect)
   } catch {
@@ -112,6 +134,18 @@ async function submit() {
         {{ loading ? 'Please wait…' : submitLabel }}
       </button>
 
+      <div class="auth-divider" aria-hidden="true"><span>or</span></div>
+
+      <button
+        class="google-button"
+        type="button"
+        :disabled="loading || !configured"
+        @click="continueWithGoogle"
+      >
+        <i class="pi pi-google" aria-hidden="true"></i>
+        Continue with Google
+      </button>
+
       <button class="text-button mode-button" type="button" :disabled="loading" @click="switchMode">
         {{ mode === 'login' ? 'New here? Create an account' : 'Already registered? Sign in' }}
       </button>
@@ -169,6 +203,54 @@ async function submit() {
 
 .submit-button {
   width: 100%;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  color: var(--ink-500);
+  font-size: 0.86rem;
+  text-transform: uppercase;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  height: 1px;
+  flex: 1;
+  background: var(--border);
+  content: '';
+}
+
+.google-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-small);
+  background: #fff;
+  color: var(--ink-900);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.google-button:hover:not(:disabled) {
+  border-color: var(--brand-600);
+  background: var(--brand-50);
+}
+
+.google-button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand-500) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.google-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .mode-button {

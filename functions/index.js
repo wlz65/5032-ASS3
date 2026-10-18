@@ -1,4 +1,4 @@
-const { onCall, HttpsError } = require('firebase-functions/v2/https')
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https')
 const { defineSecret } = require('firebase-functions/params')
 const { setGlobalOptions } = require('firebase-functions/v2')
 const logger = require('firebase-functions/logger')
@@ -7,6 +7,7 @@ const { getAuth } = require('firebase-admin/auth')
 const nodemailer = require('nodemailer')
 const { memberSummary, requireAdmin } = require('./admin')
 const { safeFilename, validateEmailRequest } = require('./validation')
+const { handleClimateDataApi } = require('./publicApi')
 
 if (!getApps().length) initializeApp()
 
@@ -14,6 +15,17 @@ const gmailAppPassword = defineSecret('GMAIL_APP_PASSWORD')
 const SENDER_EMAIL = 'a2067669103@gmail.com'
 
 setGlobalOptions({ region: 'australia-southeast1', maxInstances: 3 })
+
+exports.climateDataApi = onRequest(
+  {
+    cors: [
+      'https://mclimatewise-mel.web.app',
+      'https://mclimatewise-mel.firebaseapp.com',
+      'http://localhost:5173',
+    ],
+  },
+  handleClimateDataApi,
+)
 
 async function readAllUsers() {
   const users = []
@@ -86,7 +98,10 @@ exports.sendEmailWithAttachment = onCall(
       throw new HttpsError('failed-precondition', 'One or more selected members no longer exist.')
     }
     if (result.users.some((user) => !user.email || user.customClaims?.admin === true)) {
-      throw new HttpsError('failed-precondition', 'Only registered member accounts can receive this email.')
+      throw new HttpsError(
+        'failed-precondition',
+        'Only registered member accounts can receive this email.',
+      )
     }
 
     const transporter = nodemailer.createTransport({
